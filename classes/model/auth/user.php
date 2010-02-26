@@ -18,38 +18,21 @@ class Model_Auth_User extends Sprig
 				'empty'  => FALSE,
 				'unique' => TRUE,
 				'max_length' => 32,
-				'rules'  => array(
-					'regex' => array('/^[\pL_.-]+$/ui')
-				),
 			)),
 			'password' => new Sprig_Field_Password(array(
 				'empty' => FALSE,
 				'hash_with' => array(Auth::instance(), 'hash_password'),
-			)),
-			'password_confirm' => new Sprig_Field_Password(array(
-				'empty' => TRUE,
-				'in_db' => FALSE,
-				'hash_with' => NULL,
-				'callbacks' => array(
-					'matches' => array($this, '_check_password_matches'),
-				),
 			)),
 			'email' => new Sprig_Field_Email(array(
 				'unique' => TRUE,
 				'empty' => FALSE,
 				'max_length' => 127
 			)),
-			'logins' => new Sprig_Field_Integer(array(
-				'empty' => TRUE,
-				'editable' => FALSE,
-			)),
-			'last_login' => new Sprig_Field_Timestamp(array(
-				'empty' => TRUE,
-				'editable' => FALSE,
-			)),
-			'tokens' => new Sprig_Field_HasMany(array(
-				'model' => 'User_Token',
-				'editable' => FALSE,
+			'autologin' => new Sprig_Field_Char(array(
+			    'editable' => FALSE,
+			    'unique' => TRUE,
+			    'null' => TRUE,
+			    'empty' => TRUE,
 			)),
 			'roles' => new Sprig_Field_ManyToMany(array(
 				'model' => 'Role',

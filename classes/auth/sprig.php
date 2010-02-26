@@ -81,20 +81,18 @@ class Auth_Sprig extends Auth {
 		// If the passwords match, perform a login
 		if ($user->has_role('login') AND $user->password === $password)
 		{
-			if ($remember === TRUE)
-			{
-				// Create a new autologin token
-				$token = Sprig::factory('user_token');
-
-				// Set token data
-				$token->user = $user->id;
-				$token->expires = time() + $this->config['lifetime'];
-				$token->create();
-
-				// Set the autologin cookie
-				cookie::set('authautologin', $token->token, $this->config['lifetime']);
-			}
-
+		    if ($remember === TRUE)
+		    {
+		        // Generate autologin token
+		        $token = sha1(uniqid('sprig-auth', TRUE));
+		        
+		        // Save token to user data
+		        $user->values(array('autologin' => $token))->update();
+		        
+		        // Save token cookie
+		        cookie::set('authautologin', $token, $this->config['lifetime']);
+		    }
+		    
 			// Finish the login
 			$this->complete_login($user);
 
@@ -132,28 +130,21 @@ class Auth_Sprig extends Auth {
 	{
 		if ($token = cookie::get('authautologin'))
 		{
-			// Load the token and user
-			$token = Sprig::factory('user_token', array('token' => $token))->load();			
+			// Load the user from the given token
+			$user = Sprig::factory('user', array('autologin' => $token))->load();			
 			
-			if ($token->loaded() AND $token->user->load() AND $token->user->loaded())
+			if ($user->load() AND $user->loaded())
 			{
-				if ($token->user_agent === sha1(Request::$user_agent))
-				{
-					// Save the token to create a new unique token
-					$token->update();
+				// Complete the login with the found data
+				$this->complete_login($user);
 
-					// Set the new token
-					cookie::set('authautologin', $token->token, $token->expires - time());
-
-					// Complete the login with the found data
-					$this->complete_login($token->user);
-
-					// Automatic login was successful
-					return TRUE;
-				}
-
-				// Token is invalid
-				$token->delete();
+				// Automatic login was successful
+				return TRUE;
+			}
+			else
+			{
+			    // delete token
+                cookie::delete('authautologin');
 			}
 		}
 
@@ -164,10 +155,10 @@ class Auth_Sprig extends Auth {
 	 * Log a user out and remove any auto-login cookies.
 	 *
 	 * @param   boolean  completely destroy the session
-	 * @param	boolean  remove all tokens for user
+	 * @param	boolean  remove user autologin token
 	 * @return  boolean
 	 */
-	public function logout($destroy = FALSE, $logout_all = FALSE)
+	public function logout($destroy = FALSE, $logout_all = TRUE)
 	{
 		if ($token = cookie::get('authautologin'))
 		{
@@ -175,16 +166,11 @@ class Auth_Sprig extends Auth {
 			cookie::delete('authautologin');
 			
 			// Clear the autologin token from the database
-			$token = Sprig::factory('user_token', array('token' => $token))->load();
-			
-			if ($token->loaded() AND $logout_all)
+			$user = $this->get_user();
+			if ($user && $logout_all)
 			{
-				Sprig::factory('user_token', array('user_id' => $token->user->id))->delete();
-			}
-			elseif ($token->loaded())
-			{
-				$token->delete();
-			}
+                $user->values(array('autologin' => NULL))->update();
+            }
 		}
 
 		return parent::logout($destroy);
@@ -205,23 +191,13 @@ class Auth_Sprig extends Auth {
 	}
 
 	/**
-	 * Complete the login for a user by incrementing the logins and setting
-	 * session data: user_id, username, roles
+	 * Complete the login for a user by setting session data: user_id, username, roles
 	 *
 	 * @param   object   user model object
 	 * @return  void
 	 */
 	protected function complete_login($user)
 	{
-		// Update the number of logins
-		$user->logins += 1;
-
-		// Set the last login date
-		$user->last_login = time();
-
-		// Save the user
-		$user->update();
-
 		return parent::complete_login($user);
 	}
 	
