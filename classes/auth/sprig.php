@@ -115,7 +115,7 @@ class Auth_Sprig extends Auth {
 		$user = $this->_get_object($user);
 
 		// Mark the session as forced, to prevent users from changing account information
-		$_SESSION['auth_forced'] = TRUE;
+		$this->session->set('auth_forced', TRUE);
 
 		// Run the standard completion
 		$this->complete_login($user);
